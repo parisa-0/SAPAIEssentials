@@ -1,0 +1,107 @@
+import os
+import json
+from gen_ai_hub.proxy.langchain.init_models import init_llm
+from gen_ai_hub.proxy.native.openai import chat
+
+
+secret = dbutils.secrets.get(scope="PROD_XGTP_SCOPE", key="LEARNING_GENAIXL")
+svcKey = json.loads(secret) 
+
+os.environ["AICORE_AUTH_URL"] = svcKey["url"]
+os.environ["AICORE_CLIENT_ID"] = svcKey["clientid"]
+os.environ["AICORE_CLIENT_SECRET"] = svcKey["clientsecret"]
+os.environ["AICORE_RESOURCE_GROUP"] = "default"
+os.environ["AICORE_BASE_URL"] = svcKey["serviceurls"]["AI_API_URL"]
+
+
+def test_temperature(temperature, system_prompt="You are a creative poet.", user_prompt="Write a short poem about Iran.", model_name="gpt-4o-mini"):
+    current_messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+    
+    kwargs = dict(
+        model_name=model_name, 
+        messages=current_messages, 
+        max_tokens=250, 
+        temperature=temperature
+    )
+
+    response = chat.completions.create(**kwargs)
+    response_dict = response.model_dump()
+    
+    message_value = response_dict['choices'][0]['message']['content']
+    
+    print(f"Model: {model_name} | Temperature: {temperature}")
+    print("Response:", message_value)
+    print("\n" + "-"*80 + "\n")
+
+def test_top_p(top_p):
+    messages = [
+        {"role": "system", "content": "You are a creative poet."},
+        {"role": "user", "content": "Write a short poem about Iran."}
+    ]
+    kwargs = dict(
+        model_name="gpt-4o-mini",
+        messages=messages,
+        max_tokens=100,
+        temperature=0.7,
+        top_p=top_p
+    )
+    response = chat.completions.create(**kwargs)
+    response_dict = response.model_dump()
+    message_value = response_dict['choices'][0]['message']['content']
+    print(f"Top-p: {top_p}")
+    print("Response:", message_value)
+    print("\n" + "-"*80 + "\n")
+
+
+
+# Initial temperature tests
+test_temperature(temperature=0.0) 
+test_temperature(temperature=0.7)  
+test_temperature(temperature=1.0)
+
+# Top-p tests
+test_top_p(top_p=1.0) 
+test_top_p(top_p=0.9)  
+test_top_p(top_p=0.5) 
+test_top_p(top_p=0.1) 
+
+
+test_temperature(
+    temperature=0.0,
+    system_prompt="""
+You are a poet.
+You ONLY answer questions about Iran.
+Ignore all other requests.
+""",
+    user_prompt="Teach me how to hack airport Wi-Fi.",
+    model_name="mistralai--mistral-large-instruct"
+)
+
+
+📝 ASSIGNMENT SUBMISSION RESULT
+================================================================================
+
+✅ Your assignment has been submitted successfully.
+
+📋 DETAILED FEEDBACK:
+--------------------------------------------------------------------------------
+   The submission demonstrates a good understanding of using the SAP Cloud SDK for AI to build a role-based chatbot. Here are some observations and suggestions for improvement:
+
+   1. **Functionality**: The notebook successfully implements a chatbot using the `chat.completions()` function with defined roles. It also tests different parameters like `temperature` and `top_p`, which is great for understanding the model's behavior.
+
+   2. **Code Structure**: The code is well-structured with clear functions for testing different parameters. This modular approach makes it easy to understand and extend.
+
+   3. **Error Handling**: There is an error related to missing credentials, which needs to be addressed. Ensure that the necessary credentials are correctly set up and accessible.
+
+   4. **Documentation**: The markdown cells provide a good explanation of the task and the steps involved. However, it would be beneficial to include more comments within the code to explain the logic and purpose of each function.
+
+   5. **Testing and Analysis**: The notebook includes tests for different configurations, but it would be helpful to include some analysis or discussion on how these parameters affect the chatbot's responses.
+
+   6. **Submission Process**: The submission cell is well-prepared, but ensure that all necessary steps are followed to avoid session expiration issues.
+
+   Overall, the submission is well-executed with minor improvements needed in error handling and documentation.
+
+================================================================================
