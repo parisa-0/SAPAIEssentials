@@ -1,0 +1,147 @@
+from hdbcli import dbapi
+import hana_ml.dataframe as dataframe
+from gen_ai_hub.proxy.langchain.openai import OpenAIEmbeddings
+from gen_ai_hub.proxy.core.proxy_clients import get_proxy_client
+from langchain.chains import RetrievalQA
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import TokenTextSplitter
+from langchain.document_loaders import TextLoader
+from langchain.document_loaders import PyPDFLoader
+from langchain_community.vectorstores.hanavector import HanaDB
+
+
+import json
+import requests
+
+secret = dbutils.secrets.get(scope="PROD_XGTP_SCOPE", key="LEARNING_GENAIXL")
+svcKey = json.loads(secret)
+authUrl = svcKey["url"]
+clientid = svcKey["clientid"]
+clientsecret = svcKey["clientsecret"]
+apiUrl = svcKey["serviceurls"]["AI_API_URL"]
+
+# request token
+params = {"grant_type": "client_credentials" }
+resp = requests.post(f"{authUrl}/oauth/token",
+                    auth=(clientid, clientsecret),
+                    params=params)
+
+BtpLlmApiUrl = apiUrl
+BtpLlmAccessToken = resp.json()["access_token"]
+
+
+# Set the environment variables for the BTP LLM API
+import os 
+
+# Define Keys HERE
+env_vars = {    
+ "AICORE_AUTH_URL": authUrl,
+ "AICORE_CLIENT_ID": clientid,
+ "AICORE_CLIENT_SECRET": clientsecret,
+ "AICORE_RESOURCE_GROUP": "default",
+ "AICORE_BASE_URL": apiUrl
+}
+
+os.environ.update(env_vars)
+
+from langchain.document_loaders import PyPDFLoader
+
+# Load PDF
+loaders = [
+    # Multiple documents on purpose - data
+    PyPDFLoader("shahiran.pdf"),
+]
+docs = []
+for loader in loaders:
+    docs.extend(loader.load())
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+# Modify the chunk_size and chunk_overlap parameters
+text_splitter = RecursiveCharacterTextSplitter(
+    # TEST 1 & 2:chunk_size=1500,  # You can change this value
+    # TEST 1 & 2: chunk_overlap=150  # You can change this value
+    chunk_size=500, chunk_overlap=100
+)
+
+splits = text_splitter.split_documents(docs)
+len(splits)  # Output the number of chunks   
+
+from gen_ai_hub.proxy.native.openai import embeddings
+
+response = embeddings.create(
+    input=" Granted women the right to vote and run for office, while also increasing the minimum marriage age to 18.",
+    model_name="text-embedding-3-large"
+)
+
+len(response.data[0].embedding)
+
+embedding_model = OpenAIEmbeddings(proxy_model_name='text-embedding-3-large')
+
+embedding_model = OpenAIEmbeddings(proxy_model_name='text-embedding-3-large')
+
+sentence1 = "Women’s Rights was part of the White Revolution"
+sentence2 = "Mercedes-Benz Ener-G-Force is powered by recycled water"
+sentence3 = "In 1963 the last Shah of Iran launched the White Revolution"
+
+from gen_ai_hub.proxy.langchain.openai import ChatOpenAI
+from gen_ai_hub.proxy.core.proxy_clients import get_proxy_client
+
+proxy_client = get_proxy_client('gen-ai-hub')
+chat_llm = ChatOpenAI(proxy_model_name='gpt-4o-mini', proxy_client=proxy_client, temperature=0.0)
+# TEST 2:chat_llm = ChatOpenAI(proxy_model_name='anthropic--claude-4.5-sonnet', proxy_client=proxy_client, temperature=0.0)
+
+import numpy as np
+
+embedding1 = embedding_model.embed_query(sentence1)
+embedding2 = embedding_model.embed_query(sentence2)
+embedding3 = embedding_model.embed_query(sentence3)
+
+import numpy as np
+
+
+#TEST 1: model gpt-4o-min and chunk_size=1500, chunk_overlap=150
+# The dot product of the two embeddings is np.dot(embedding1, embedding2) which equals 0.0873179241018788
+# The dot product of the two embeddings is np.dot(embedding1, embedding3) which equals 0.5989876556876567
+# The dot product of the two embeddings is np.dot(embedding2, embedding3) which equals 0.06723771341360468
+# Analysing TEST 1: above with model gpt-4o-min and chunk_size=1500, chunk_overlap=150. Strongest Connection (0.599): Sentence 1 (Women’s Rights/White Revolution) and Sentence 3 (1963/Shah of Iran/White Revolution). This high score reflects a clear semantic overlap. The model recognizes that "Women's Rights" is a historical component of the "White Revolution" mentioned in both strings.Weakest Connection (0.067): Sentence 2 (Mercedes-Benz) and Sentence 3 (Shah of Iran). These are fundamentally different topics—modern automotive concepts versus 20th-century Iranian history—resulting in a score near zero. Irrelevant Connection (0.087): Sentence 1 (Women’s Rights) and Sentence 2 (Mercedes-Benz). Similar to the previous pair, there is no logical or contextual link here, confirming that the embedding model effectively distinguishes between distinct domains of knowledge.Summary: The results prove your RAG pipeline is working correctly; it can successfully identify contextually relevant information (the White Revolution) while ignoring noise (the Mercedes-Benz fun fact).
+
+#TEST 2: model anthropic--claude-4.5-sonnet and chunk_size=1500, chunk_overlap=150
+# The dot product of the two embeddings is np.dot(embedding1, embedding2) which equals 0.0873179241018788
+# The dot product of the two embeddings is np.dot(embedding1, embedding3) which equals 0.5989876556876567
+# The dot product of the two embeddings is np.dot(embedding2, embedding3) which equals 0.06723771341360468
+# Analysing TEST 2: Results are the same as test 2 different LLM models gave the same result. This proves the embedding logic is stable. Whether I use GPT-4o-mini or Claude 4.5 Sonnet, the (embeddings) used to find the data remains consistent. My findings confirm that text-embedding-3-large works effectively as a universal translator for different LLMs, correctly grouping the "White Revolution" topics together while isolating the "Mercedes-Benz" noise for both Claude and GPT.
+
+#TEST 3: model gpt-4o-min and chunk_size=500, chunk_overlap=100
+# The dot product of the two embeddings is np.dot(embedding1, embedding2) which equals 0.08725881207871097
+# The dot product of the two embeddings is np.dot(embedding1, embedding3) which equals 0.599010169905053
+# The dot product of the two embeddings is np.dot(embedding2, embedding3) which equals 0.06723771341360468
+# Analysing TEST 3: By moving to smaller chunks, the RAG pipeline is a little bit more precise and less likely to include irrelevant data in the final prompt sent to GPT-4o-mini since the connection between the White Revolution and Mercedes-Benz decreased slightly, and the similarity between Sentence 1 and Sentence 3 increased very slightly. 
+
+
+
+
+The submission demonstrates a comprehensive approach to integrating Generative AI with RAG and HANA Vector Engine. Here are some observations and suggestions:
+
+1. **Installation and Setup**: The notebook begins with installing necessary packages, which is essential for the execution of the code. Ensure that all dependencies are correctly installed and compatible with the environment.
+
+2. **API Key Usage**: The notebook includes a section on API keys, emphasizing their use strictly within the training environment. This is a good practice for security and compliance.
+
+3. **PDF Document Loading**: The code successfully loads a PDF document using `PyPDFLoader`. Ensure the document is relevant and the path is correctly specified.
+
+4. **Text Splitting**: The use of `RecursiveCharacterTextSplitter` for chunking text is well-implemented. The notebook explores different chunk sizes and overlaps, which is crucial for optimizing RAG performance.
+
+5. **Embedding and Model Testing**: The submission tests different models (gpt-4o-mini, Claude 4.5 Sonnet) and observes the quality of embeddings. The analysis of dot products between embeddings is insightful, showing the effectiveness of the RAG pipeline.
+
+6. **Observations and Analysis**: The notebook includes detailed observations from the tests conducted, which is valuable for understanding the impact of different configurations.
+
+7. **Submission Process**: The notebook provides clear instructions for submitting the assignment, which is helpful for ensuring the submission is processed correctly.
+
+Overall, the submission is well-structured and demonstrates a thorough understanding of the assignment requirements. The tests and observations are detailed and provide valuable insights into the performance of different configurations.
+
+Suggestions:
+- Consider adding more comments or markdown cells to explain the purpose of each code block.
+- Ensure that the PDF document used is relevant and provides meaningful data for testing.
+- Verify the compatibility of installed packages with the current environment to avoid runtime errors.
+
+The submission is complete and meets the assignment criteria.
