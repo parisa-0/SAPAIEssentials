@@ -1,0 +1,485 @@
+%md
+# Welcome to RAG+ Hana Vector Engine module of AI Developer Foundation Program 
+
+%md
+If you haven't started the course on Success Map Learning yet, please begin the course ["Retrieval-Augmented Generation (RAG) with Hana Vector Engine" here](https://performancemanager5.successfactors.eu/sf/learning?destUrl=https%3A%2F%2Fsap%2eplateau%2ecom%2Flearning%2Fuser%2Fdeeplink%5fredirect%2ejsp%3FlinkId%3DITEM%5fDETAILS%26componentID%3DDEV%5f00010189%5fWBT%26componentTypeID%3DCOURSE%26revisionDate%3D1746006405000%26fromSF%3DY&company=SAP).
+%md
+## Need help?
+
+If you have any questions or need clarification while working through the hands-on tutorial, don’t hesitate to reach out! Post your questions in the _[Microsoft Teams channel](https://teams.microsoft.com/l/channel/19%3AKZsG47NTYJN60sptRZuDdxXKUMVqACHP9oUGDG_sGTo1%40thread.tacv2/Questions%20and%20Answers?groupId=d9db4a55-e955-451f-8970-d36645e0bad6&tenantId=42f7676c-f455-423c-82f6-dc2d99791af7)_, where our experts will support and guide you.
+%md
+## New to Jupyter Notebooks? 
+
+Watch [this two-minute video](https://video.sap.com/media/t/1_1mvbnxwp) for a walkthrough of this environemnt. 
+
+#### Before You Begin
+- Click the **“Connect”** button at the top-right of this page.
+- Choose **“Serverless”** to begin. This will ensure that all your dependencies are pre-installed.
+
+⚠️ Important: If your session remains idle and expires, you’ll need to click Connect → Serverless again and re-run all cells from the start.
+
+#### How to Run a Cell
+1. Click inside any cell to select it.
+2. Click on the **Run cell** button at the top-left of the cell to run it. You can also use the **Shift+Enter** shortcut key.
+4. The result appears directly below the code.
+
+Run cells from top to bottom, one at a time.
+
+#### Coming Back Later
+
+If you wish to return to this notebook later:
+1. Go to [SAP Experience Garage](https://dh.xg.int.sap/#/hero/home?date-range=lastThirtyDays).
+2. Click on My Workspace.
+3. Locate your project under My Idea Projects.
+4. Click the eye icon on the far right of your project row to open it again.
+%md
+### 🔐 Important Notice: Training Environment API Keys
+
+The API keys used in this notebook are provided strictly for training purposes.
+These keys:
+- incur real consumption cost,
+- are intended only for use within this specific training notebook, and
+- must not be used for any other purpose, including personal experiments, external scripts, or private proof‑of‑concepts.
+
+Any use of these keys **outside this controlled training environment** is prohibited.
+Unauthorized usage may be treated as a **compliance violation** and can lead to a **cybersecurity incident response**, including revocation of access and escalation to the security team.
+Please handle these credentials responsibly.
+
+🍃 If you would like to experiment with AI Core services beyond this training notebook, you can request your own set of API keys for your experiments using the link [Generative AI Experience Lab Services](https://sap.sharepoint.com/sites/205734/SitePages/Generative-AI-Experience-Lab.aspx?xsdata=MDV8MDJ8fDk4ODJmZDJhYTUzNTQ0MjBkMzJkMDhkZGM0NGYxYjE0fDQyZjc2NzZjZjQ1NTQyM2M4MmY2ZGMyZDk5NzkxYWY3fDB8MHw2Mzg4ODI1NjYxOTIyODg1NTd8VW5rbm93bnxWR1ZoYlhOVFpXTjFjbWwwZVZObGNuWnBZMlY4ZXlKRFFTSTZJbFJsWVcxelgwRlVVRk5sY25acFkyVmZVMUJQVEU5R0lpd2lWaUk2SWpBdU1DNHdNREF3SWl3aVVDSTZJbGRwYmpNeUlpd2lRVTRpT2lKUGRHaGxjaUlzSWxkVUlqb3hNWDA9fDF8TDJOb1lYUnpMekU1T2pOaU1qUTNOekV4TFRoaFl6VXRORE16TnkwNFpUTTJMVFl3TVdVell6TTNPVEJoTkY4NU1HRXlNemt6WXkwM1pHUm1MVFJtWWpZdFlqZzJaQzAyTTJZME5USmtOVEUwTURSQWRXNXhMbWRpYkM1emNHRmpaWE12YldWemMyRm5aWE12TVRjMU1qWTFPVGd4T0RjNU53PT18Yzc3OTA3NGI0MDkwNDM4MWQzMmQwOGRkYzQ0ZjFiMTR8ZGNmNmNjMmQxNmIwNDVjYmI3NjU3NWI3MGM4ZTEyZjE%3D&sdata=U0JEVUthcEJxc0lFVHFoVUlvM3VlRy85TVVua1MvUExSSkljSFdBK1B3UT0%3D&ovuser=42f7676c-f455-423c-82f6-dc2d99791af7%2Cjenifer.sam%40sap.com&OR=Teams-HL&CT=1753250130963&clickparams=eyJBcHBOYW1lIjoiVGVhbXMtRGVza3RvcCIsIkFwcFZlcnNpb24iOiI1MC8yNTA3MDMxODgwNiIsIkhhc0ZlZGVyYXRlZFVzZXIiOmZhbHNlfQ%3D%3D#generative-ai-experience-lab-services).
+
+🍃 If you want to productize an AI use case at SAP, you will need to [provision an AI Core service in your BTP subaccount](https://help.sap.com/docs/sap-ai-core/sap-ai-core-service-guide/enabling-service-in-cloud-foundry).
+%md
+# Watch: Initial Configuration and Introduction to RAG
+from IPython.display import IFrame
+
+# URL of the video you want to embed
+video_url = "https://video.sap.com/embed/secure/iframe/entryId/1_4890iame/uiConfId/54310412/st/0"
+
+# Embed the video using IFrame
+IFrame(src=video_url, width=768, height=432)
+%md
+To display the video in a separate browser window, you can click on [Introduction to RAG](https://video.sap.com/media/t/1_4890iame)
+%pip install -q requests hana-ml hdbcli "sap-ai-sdk-gen[all]==5.6.3" cryptography pypdf 
+dbutils.library.restartPython()
+from hdbcli import dbapi
+import hana_ml.dataframe as dataframe
+from gen_ai_hub.proxy.langchain.openai import OpenAIEmbeddings
+from gen_ai_hub.proxy.core.proxy_clients import get_proxy_client
+from langchain.chains import RetrievalQA
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import TokenTextSplitter
+from langchain.document_loaders import TextLoader
+from langchain.document_loaders import PyPDFLoader
+from langchain_community.vectorstores.hanavector import HanaDB
+#This script is used to get the access token for the BTP LLM API
+import json
+import requests
+
+secret = dbutils.secrets.get(scope="PROD_XGTP_SCOPE", key="LEARNING_GENAIXL")
+svcKey = json.loads(secret)
+authUrl = svcKey["url"]
+clientid = svcKey["clientid"]
+clientsecret = svcKey["clientsecret"]
+apiUrl = svcKey["serviceurls"]["AI_API_URL"]
+
+# request token
+params = {"grant_type": "client_credentials" }
+resp = requests.post(f"{authUrl}/oauth/token",
+                    auth=(clientid, clientsecret),
+                    params=params)
+
+BtpLlmApiUrl = apiUrl
+BtpLlmAccessToken = resp.json()["access_token"]
+# Set the environment variables for the BTP LLM API
+import os 
+
+# Define Keys HERE
+env_vars = {    
+ "AICORE_AUTH_URL": authUrl,
+ "AICORE_CLIENT_ID": clientid,
+ "AICORE_CLIENT_SECRET": clientsecret,
+ "AICORE_RESOURCE_GROUP": "default",
+ "AICORE_BASE_URL": apiUrl
+}
+
+os.environ.update(env_vars)
+%md
+# Retrieval-Augmented Generation (RAG) 
+
+In this section, we will explore **Retrieval-Augmented Generation (RAG)**, a powerful technique for combining the strengths of retrieval and generation. RAG uses a combination of information retrieval and language models to generate responses based on retrieved content from external knowledge sources.
+
+## Why is RAG important?
+
+RAG provides a solution for answering complex queries by:
+1. Retrieving relevant information from large collections of unstructured data.
+2. Generating a coherent and context-aware response based on retrieved content.
+
+Use cases include:
+- Question answering systems.
+- Document summarization.
+- Chatbots that need up-to-date or specific external knowledge.
+
+%md
+## Motivating example
+Large language models have not likely been trained on specific company information, especially not company internal information. Like in the example below.
+from gen_ai_hub.proxy.native.openai import chat
+import json
+
+
+messages = [ {"role": "user", "content": "Can I be reimboursed if I need to cancel my booked business trip because of personal reasons at SAP?"} ]
+
+kwargs = dict(model_name='gpt-4o-mini', messages=messages)
+response = chat.completions.create(**kwargs)
+response_dict = response.model_dump()
+message_value = response_dict['choices'][0]['message']['content']
+message_value
+%md
+## RAG with HANA Vector Engine
+
+%md
+![diagram.png](/Workspace/Users/florian.oberacker@sap.com/Shared/RAG.png)
+%md
+This code performs the document split (loaded using PyPDF Loader available with Langchain) in chunks of size 200 & chunk overlap 25. If you wish to use a text file, you can use TextLoader added as import below (for other file types supported, refer - https://python.langchain.com/docs/modules/data_connection/document_loaders/)
+
+split of the text is done and embedding model is initiated using text-embedding-3-large
+%md
+![image.png](/Workspace/Users/florian.oberacker@sap.com/Shared/Doc.png)
+#Policy download links- https://one.int.sap/company/policies_and_guidelines/travel_and_mobility#procurement___travel_b9ff/sap_global_car_fleet_policy_
+
+from langchain.document_loaders import PyPDFLoader
+
+# Load PDF
+loaders = [
+    # Multiple documents on purpose - data
+    PyPDFLoader("GlobalTravelPolicy (English).pdf"),
+    PyPDFLoader("SAP Global Environmental Policy_Internal_ENGLISH.pdf"),
+]
+docs = []
+for loader in loaders:
+    docs.extend(loader.load())
+%md
+# Watch: Splitting documents and Chunking Strategies
+from IPython.display import IFrame
+
+# URL of the video you want to embed
+video_url = "https://video.sap.com/embed/secure/iframe/entryId/1_hz6jlg0r/uiConfId/54310412/st/0"
+
+# Embed the video using IFrame
+IFrame(src=video_url, width=768, height=432)
+%md
+To display the video in a separate browser window, you can click on [Chunking Strategies](https://video.sap.com/media/t/1_hz6jlg0r)
+%md
+
+### Why Split Documents and Maintain Overlaps?
+
+In retrieval-augmented generation (RAG), splitting large documents into smaller chunks is essential for efficient retrieval and better generation. Here's why:
+
+1. **Memory Constraints**: Large documents can be too big to process all at once in memory. Splitting into smaller, manageable chunks ensures the system can handle them efficiently.
+2. **Improved Retrieval**: Splitting allows the retrieval engine to match relevant sections more accurately, rather than considering an entire large document.
+3. **Maintaining Context with Overlap**: When splitting, overlaps between chunks help preserve context. This is important because the boundary of one chunk might split a coherent idea. The overlap helps ensure that the retrieval engine doesn’t lose important information that might span two chunks.
+
+%md
+### Chunking Strategies
+
+We are mentioning three chunking strategies, while acknowledging there could be additional ones that may require your own research and experimentation.
+
+1️. **Fixed-Size Chunking**
+
+* Splits text into fixed-sized chunks based on tokens or characters.
+* Positives: Simple and easy to implement.
+* Negatives: Often breaks sentences or paragraphs, leading to incomplete context.
+    
+2️. **Sliding Window Approach**
+
+* Moves a fixed-size window across the text, creating overlapping chunks.
+* Positives: Maintains context across chunks.
+* Negatives: Introduces redundancy, increasing computational overhead.
+
+3️. **Recursive Splitting**
+
+* Divides text at semantic or structural boundaries like sentences or paragraphs.
+* Positives: Preserves meaning by aligning chunks with natural breaks.
+* Negatives: Computationally intensive and requires advanced parsing techniques.
+
+Selecting the right chunking strategy is vital for the accuracy in output of LLM-based applications. Fixed-size chunking offers simplicity but may lose meaning. Sliding windows maintain continuity but add redundancy. Recursive splitting ensures semantic integrity but requires careful implementation.
+
+%md
+### Exercise: 
+### Step 1: Explore Chunking with Overlaps
+Let's experiment with chunking and overlaps. Adjust the `chunk_size` and `chunk_overlap` values in the code below and observe how the number of chunks changes.
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+# Modify the chunk_size and chunk_overlap parameters
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1500,  # You can change this value
+    chunk_overlap=150  # You can change this value
+)
+
+splits = text_splitter.split_documents(docs)
+len(splits)  # Output the number of chunks
+
+%md
+
+## Step 2: Text Splitting with Overlaps
+
+To efficiently search over documents, we need to split them into smaller, manageable chunks. **RecursiveCharacterTextSplitter** is a tool designed to split text while preserving context through overlaps.
+
+Why is splitting important?
+1. **Memory efficiency**: Large documents are too big to process all at once.
+2. **Better retrieval**: Small chunks enable more accurate and faster retrieval.
+3. **Overlaps** help preserve context between chunks, preventing important information from being lost.
+
+### Exercise:
+Try adjusting the `chunk_size` and `chunk_overlap` parameters and observe how the number of chunks changes.
+
+# Split
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size = 1500,
+    chunk_overlap = 150
+)
+splits = text_splitter.split_documents(docs)
+len(splits)
+%md
+# Watch: Semantic Search and Distance Functions
+from IPython.display import IFrame
+
+# URL of the video you want to embed
+video_url = "https://video.sap.com/embed/secure/iframe/entryId/1_31t2qfli/uiConfId/54310412/st/0"
+
+# Embed the video using IFrame
+IFrame(src=video_url, width=768, height=432)
+%md
+To display the video in a separate browser window, you can click on [Searching and Distance Functions](https://video.sap.com/media/t/1_31t2qfli)
+%md
+
+### Step 3: Semantic Search and Distance Functions
+
+Semantic search helps in retrieving documents that are semantically similar to a query, not just those with exact keyword matches. Common distance functions used in semantic search are:
+
+1. **L2 (Euclidean) Distance**: Measures the straight-line distance between two points (vectors). It's commonly used in geometric contexts but may not capture similarity well in high-dimensional spaces.
+When to use:
+	•	Image search and spatial data: L2 distance is often used when the data represents physical space or continuous attributes, such as in image search or geographical location data. In these cases, the exact “distance” between two points in the vector space is meaningful.
+2. **Cosine Similarity**: Measures the cosine of the angle between two vectors. This is often used in text retrieval tasks because it focuses on the direction rather than the magnitude of the vectors.
+When to use:
+	•	Text-based retrieval: Cosine similarity works well in natural language processing tasks, where the direction of the vector (representing the semantics of the text) matters more than its magnitude.
+	•	Document clustering: When clustering text documents or searching for documents with similar topics, cosine similarity helps retrieve semantically related information even if the length of the documents varies.
+
+Other possible distance measures include:
+- **Manhattan Distance**: Based on the sum of absolute differences.  It works well when comparing structured (tabular) data with features that are unrelated or only loosely related.
+- **Jaccard Similarity**: Measures the intersection over union of sets of tokens. Jaccard similarity is ideal for tasks where you compare sets of elements, such as keyword sets, tags, or lists. It measures how similar two sets are based on shared elements.
+
+### Exercise: Compare Distance Metrics
+Using the vectors below, calculate the L2 distance and cosine similarity between two text embeddings. Experiment with different metrics and see how the values change.
+
+from gen_ai_hub.proxy.native.openai import embeddings
+
+response = embeddings.create(
+    input="Non-compliance with the Global Travel Policy may lead to legal, tax or financial risk, and may even put SAP’s reputation at risk.",
+    model_name="text-embedding-3-large"
+)
+print(response.data)
+len(response.data[0].embedding)
+embedding_model = OpenAIEmbeddings(proxy_model_name='text-embedding-3-large')
+
+sentence1 = "The Global Travel Policy is based on SAP’s values, strategies, and principles"
+sentence2 = "Do the cows come from Mars or from Vebus or from the lake nearby ?"
+sentence3 = "SAP's Cloud Strategy is sound and customer adoption shows they value our company's offerings"
+from gen_ai_hub.proxy.langchain.openai import ChatOpenAI
+from gen_ai_hub.proxy.core.proxy_clients import get_proxy_client
+
+proxy_client = get_proxy_client('gen-ai-hub')
+chat_llm = ChatOpenAI(proxy_model_name='gpt-4o-mini', proxy_client=proxy_client, temperature=0.0)
+embedding1 = embedding_model.embed_query(sentence1)
+embedding2 = embedding_model.embed_query(sentence2)
+embedding3 = embedding_model.embed_query(sentence3)
+%md
+NumPy's dot product function is a mathematical operation that takes two arrays of the same length and multiplies corresponding elements, followed by adding those products.  In the context of comparing embeddings, it's extremely useful because it can measure the cosine similarity between two vectors when they're normalized. When embeddings (high-dimensional vectors that represent text) are compared, the angle between them can signify the degree of similarity. Smaller angles indicate more similar embeddings and larger angles suggest less similarity. By using the dot product, we effectively measure the cosine of the angle between two embeddings, giving us a quantifiable measure of their similarity. This is key in many natural language processing tasks, such as searching for documents similar to a given query in a large corpus.
+import numpy as np
+np.dot(embedding1, embedding2)
+np.dot(embedding1, embedding3)
+np.dot(embedding2, embedding3)
+%md
+Microsoft's Azure API is currently limiting the number of simultaneous calls to 16, therefore we need to process the splits in batches.
+%md
+### One of the criteria to run the below cells is to have the hana vector engine in a running state otherwise the connection will be refused. 
+### If you have already not followed the pre-requisite video, please find it below again and do the set up.
+from IPython.display import IFrame
+
+# URL of the video you want to embed
+video_url = "https://video.sap.com/embed/secure/iframe/entryId/1_lp4xdr8x/uiConfId/54310412/st/0"
+
+# Embed the video using IFrame
+IFrame(src=video_url, width=768, height=432)
+%md
+To display the video in a separate browser window, you can click on [Setting up Hana Vector Engine](https://video.sap.com/media/t/1_lp4xdr8x)
+%md
+# Watch: Establish connection to Hana Vector Engine and Building of RAG Pipeline
+from IPython.display import IFrame
+
+# URL of the video you want to embed
+video_url = "https://video.sap.com/embed/secure/iframe/entryId/1_atsx3tfv/uiConfId/54310412/st/0"
+
+# Embed the video using IFrame
+IFrame(src=video_url, width=768, height=432)
+
+%md
+To display the video in a separate browser window, you can click on [RAG Pipeline](https://video.sap.com/media/t/1_atsx3tfv)
+
+%md
+
+## Step 4: Setting Up the Vector Store
+
+A **vector store** allows us to efficiently store and retrieve document embeddings (dense vector representations of documents). 
+%md
+The below code retrieves the values of HANA user, Password & Host from environment variables. You can directly pass the same as well instead of first adding to the environment variable
+# Define the HANA Cloud username (most probably DBADMIN)
+HANA_USER_VDB = 'DBADMIN'
+
+# Define the HANA Cloud password (replace by the value you defined during the HANA Cloud instance creation)
+HANA_PASSWORD_VDB = 'Password12'
+
+# Define the HANA Cloud host - this host was configured during the HANA Cloud instance creation
+# Hint1- This is your SQL Endpoint. But remove ":443" from the SQL Endpoint as port is already hardcoded
+# Hint2- In HANA Cloud Central, click on your instance, then click on button "Copy SQL Endpoint" at the top right corner
+
+HANA_HOST = '446a0fce-7906-4744-b172-b0dab5187cf1.hna1.prod-us10.hanacloud.ondemand.com'
+
+%md
+Establish the connection to HANA DB
+# Use connection settings
+connection = dbapi.connect(
+    address=HANA_HOST,
+    port=443,
+    user=HANA_USER_VDB,
+    password=HANA_PASSWORD_VDB,
+    encrypt='true',
+    autocommit=True
+)
+# Connection Context
+conn = dataframe.ConnectionContext(
+    address=HANA_HOST,  
+    port=443,
+    user=HANA_USER_VDB,
+    password=HANA_PASSWORD_VDB,
+    encrypt='true',
+    autocommit=True
+)
+print(conn)
+%md
+Import necessary langchain modules along with assignment of the proxy client as gen-ai-hub & chat_llm model initiation as gpt-4o-mini, which can be changed based on model availability in GENAI Hub
+from gen_ai_hub.proxy.langchain.openai import ChatOpenAI
+from gen_ai_hub.proxy.core.proxy_clients import get_proxy_client
+
+proxy_client = get_proxy_client('gen-ai-hub')
+chat_llm = ChatOpenAI(proxy_model_name='gpt-4o-mini', proxy_client=proxy_client, temperature=0.0)
+db = HanaDB(
+    embedding=embedding_model,
+    connection=connection,
+    table_name="TRAVEL_AND_ENVIRONMENT_POLICY"
+    # vector_column_length=1536
+)
+
+# # Delete already existing documents from the table
+db.delete(filter={})
+
+# # add the loaded document chunks 
+db.add_documents(splits)
+# take a look at the table
+hdf = conn.sql(''' SELECT "VEC_TEXT", "VEC_META", TO_NVARCHAR("VEC_VECTOR") AS "VEC_VECTOR" FROM "TRAVEL_AND_ENVIRONMENT_POLICY" ''')
+df = hdf.head(10).collect()
+df
+
+retriever = db.as_retriever()
+%md
+
+## Step 5: Building the RAG Pipeline
+
+Now that we have stored our document embeddings in HANA Vector Engine, let's build a simple retrieval-augmented generation pipeline using LangChain.
+
+The process:
+1. Input a query.
+2. Retrieve relevant documents based on the query.
+3. Generate a response based on the retrieved content.
+from langchain_core.prompts import ChatPromptTemplate
+prompt = ChatPromptTemplate.from_template("""Provide answers based on context provided:
+
+<context>
+{context}
+</context>
+
+Question: {input}""")
+%md
+create document_chain with chat_llm (defined earlier and prompt
+
+retrieval chain using hana db & document chain
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+
+document_chain = create_stuff_documents_chain(chat_llm, prompt)
+retrieval_chain = create_retrieval_chain(retriever, document_chain)
+%md
+invoke the query
+response = retrieval_chain.invoke({"input": "Which are the certified environmental and energy management systems that SAP run?"})
+print(response["answer"])
+response = retrieval_chain.invoke({"input": "How much does SAP intend to reduce its carbon emissions for the rest of 2025?"})
+print(response["answer"])
+response = retrieval_chain.invoke({"input": "what are the key environmental objectives to foster a low-carbon, circular future"})
+print(response["answer"])
+response = retrieval_chain.invoke({"input": "What are the reimbursable expenses? Can I attend a conference that falls on a Sunday?"})
+print(response["answer"])
+response = retrieval_chain.invoke({"input": "Can I book a hotel that is not a SAP preferred hotel?"})
+print(response["answer"])
+%md
+# Watch: Limitations of RAG
+from IPython.display import IFrame
+
+# URL of the video you want to embed
+video_url = "https://video.sap.com/embed/secure/iframe/entryId/1_t3p9cu5p/uiConfId/54310412/st/0"
+
+# Embed the video using IFrame
+IFrame(src=video_url, width=768, height=432)
+%md
+To display the video in a separate browser window, you can click on [Limitations of RAG](https://video.sap.com/media/t/1_t3p9cu5p)
+%md
+
+### Limitations of RAG
+
+1. **Not Like SQL Queries**: RAG systems don't behave like traditional SQL queries. SQL is deterministic, meaning that each query gives a precise, exact result from structured data. RAG systems, on the other hand, search over unstructured text and return approximate matches. They are probabilistic and can return different results for the same query.
+
+2. **Hallucinations**: RAG systems can generate information that isn't present in the source documents. This is known as "hallucination." For example, a RAG system might generate details that seem plausible but are not supported by the retrieved documents.
+
+### Example: Hallucination in RAG
+Below is an example where the RAG system generates a response that contains hallucinated information.
+
+response = retrieval_chain.invoke({"input": "Can you tell something about ISO 9001 mentioned in SAP policy"})
+print(response["answer"])
+# Note: There is no mention of ISO 9001 in the policies but it does exist otherwise. So lets see if it may result in hallucination.
+response = retrieval_chain.invoke({"input": "How does ISO 9001 help SAP Achieve net-zero along SAP's value chain in line with a 1.5°C future by 2030"})
+print(response["answer"])
+# Note: There is no mention of ISO 9001 in the policies but it does exist otherwise. So lets see if it may result in hallucination.
+
+response = retrieval_chain.invoke({"input": "Can you tell something about ISO 12345 mentioned in SAP policy"})
+print(response["answer"])
+# Note: There is no mention of ISO 12345 in the policies and it does not exist as well. So lets see if it may result in hallucination.
+
+%md
+
+## Step 6: Best Practices for RAG
+
+To improve the performance of RAG systems, follow these best practices:
+- **Improve document quality**: Ensure that the documents you retrieve from are clean and relevant.
+- **Tune chunk sizes**: Experiment with chunk sizes to balance retrieval accuracy and efficiency.
+- **Reduce hallucinations**: Implement filtering mechanisms to verify the accuracy of generated responses.
+
+response = retrieval_chain.invoke({"input": "my son has the minimum age for driving a car in US and i would like to book a mid sized car for my business trip. Assuming I filled the gas, Is there any additional cost for him to be able to drive"})
+
+print(response["answer"])
+
+## Example of a hallucination
+# The response is a partial hallucination because the model infers that the employee’s son can drive the rental car, even though the company policy document does not mention or permit this.
+%md
+
+Please remember to complete the [Knowledge Check](https://sap.plateau.com/icontent_e/CUSTOM/sap/self-managed/sap_content/DEV/retrieval_augmented/scormcontent/index.html#/lessons/g-GM41ohwRcg99h-eeIDroQCEjtndhRh) on Success Map Learning, as this is necessary for recording the completion of the course. Additionally, ensure that you finish and submit the **Hands-on Assignment** on the ML Workbench to qualify for the **Credly Badge** for AI Developer Skills. Thank you!
+
