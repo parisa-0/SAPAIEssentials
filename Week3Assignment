@@ -1,0 +1,90 @@
+import json, os
+from gen_ai_hub.orchestration.models.config import OrchestrationConfig
+from gen_ai_hub.orchestration.models.template import Template
+from gen_ai_hub.orchestration.models.llm import LLM
+from gen_ai_hub.orchestration.models.translation.translation import Translation, InputTranslationConfig, InputTranslationModule, TranslationType
+from gen_ai_hub.orchestration.models.azure_content_filter import AzureContentFilter
+from gen_ai_hub.orchestration.models.content_filtering import ContentFiltering, InputFiltering
+from gen_ai_hub.orchestration.models.data_masking import DataMasking
+from gen_ai_hub.orchestration.models.sap_data_privacy_integration import SAPDataPrivacyIntegration, MaskingMethod, ProfileEntity
+from gen_ai_hub.orchestration.models.message import Message
+from gen_ai_hub.orchestration.models.response_format import ResponseFormatJsonSchema
+from gen_ai_hub.orchestration.service import OrchestrationService
+
+# 1. FIXED JSON SCHEMA
+social_media_schema = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "username": {"type": "string"},
+        "content": {"type": "string"},
+        "hashtags": {"type": "array", "items": {"type": "string"}},
+        "original_language": {"type": "string"}
+    },
+    "required": ["username", "content", "hashtags", "original_language"]
+}
+
+# 2. FIXED CONFIG BUILDER (Handles English correctly)
+def build_config(source_language: str, username: str, text: str, hate_threshold: int = 0):
+    # Only use translation if the source is NOT English
+    translation_mod = None
+    if source_language.lower() not in ["en", "en-us", "en-gb"]:
+        translation_mod = Translation(
+            input_translation=InputTranslationModule(
+                type=TranslationType.SAP_DOCUMENT_TRANSLATION.value,
+                config=InputTranslationConfig(source_language=source_language, target_language="en-US")
+            )
+        )
+
+    filtering_mod = ContentFiltering(input_filtering=InputFiltering(filters=[
+        AzureContentFilter(hate=hate_threshold, sexual=6, violence=6, self_harm=6)
+    ]))
+
+    masking_mod = DataMasking(providers=[SAPDataPrivacyIntegration(
+        method=MaskingMethod.ANONYMIZATION, entities=[ProfileEntity.EMAIL, ProfileEntity.PHONE]
+    )])
+
+    prompt = f"Extract JSON. username: {username}, language: {source_language}. POST: {text}"
+
+    return OrchestrationConfig(
+        template=Template(
+            messages=[Message(role="user", content=prompt)],
+            response_format=ResponseFormatJsonSchema(name="sm_post", schema=social_media_schema)
+        ),
+        llm=LLM(name="gpt-4o", version="latest", parameters={"temperature": 0.0}),
+        filtering=filtering_mod,
+        data_masking=masking_mod,
+        translation=translation_mod
+    )
+
+# 3. FIXED EXECUTION (Correct attribute access)
+def process_post(post_obj: dict, hate_threshold: int = 0) -> dict:
+    try:
+        cfg = build_config(post_obj["language"], post_obj["username"], post_obj["text"], hate_threshold)
+        response = OrchestrationService().run(config=cfg)
+        
+        # CRITICAL FIX: Access choices[0] correctly
+        raw_content = response.orchestration_result.choices[0].message.content
+        return {"status": "SUCCESS", "data": json.loads(raw_content)}
+        
+    except Exception as e:
+        msg = str(e).lower()
+        if any(word in msg for word in ["safety", "filter", "blocked"]):
+            return {"status": "BLOCKED_BY_FILTER", "reason": f"Safety Policy: {e}"}
+        return {"status": "ERROR", "reason": str(e)}
+
+# 4. REQUIRED TEST SCENARIOS (Shows filter & masking in action)
+test_scenarios = [
+    {"name": "HATE SPEECH BLOCK", "language": "en", "username": "troll", "text": "I hate these people, let's hurt them!", "lvl": 0},
+    {"name": "MASKING TEST", "language": "en", "username": "user1", "text": "Email me at support@test.com", "lvl": 2},
+    {"name": "DE-DE TEST", "language": "de-DE", "username": "eu_user", "text": "Wir arbeiten zusammen.", "lvl": 2}
+]
+
+for test in test_scenarios:
+    print(f"\n--- {test['name']} ---")
+    res = process_post(test, hate_threshold=test['lvl'])
+    print(f"STATUS: {res['status']}")
+    if res['status'] == "SUCCESS":
+        print(json.dumps(res['data'], indent=2))
+    else:
+        print(f"REASON: {res['reason']}")
