@@ -270,3 +270,22 @@ print("Final Product Description:\n", result)
 
   result = agent.run("What is the average product price?")
   print("Agent output:", result)
+
+     verbosity_level=2,
+                                                                                                                    │
+│ What is the average product price?                                                                              │
+│                                                                                                                 │
+╰─ OpenAIModel - gpt-4o ──────────────────────────────────────────────────────────────────────────────────────────╯
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Step 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Output message of the LLM: ────────────────────────────────────────────────────────────────────────────────────────
+Thought: To solve this task, I will directly use the tool `calculate_avg_price`, which is specifically designed to 
+calculate the average product price from the receipts table. Let me call this tool to find the answer.             
+                                                                                                                   
+<code>                                                                                                             
+average_price = calculate_avg_price()                                                                              
+final_answer(average_price)                                                                                        
+                                                                                                                   
+ ─ Executing parsed code: ──────────────────────────────────────────────────────────────────────────────────────── 
+  average_price = calculate_avg_price()                                                                            
+  final_answer(average_price)                                                                                      
+ ───────────────────────────────────────────────
