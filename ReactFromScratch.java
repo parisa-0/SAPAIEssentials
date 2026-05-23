@@ -523,3 +523,254 @@ print(send_request(task))
 res, scratchpad = agent.run(task)
 
 print_scratchpad(scratchpad)
+
+
+    print("""
+  === TOOLS DOCUMENTATION ===
+
+  Tool 1: convert_currency
+    Name:    convert_currency
+    Input:   amount (float), from_currency (str, 3-letter e.g. USD), to_currency (str, 3-letter e.g. EUR)
+    Output:  {success: bool, amount: float, from: str, to: str, converted: float, rate: float}
+    Purpose: Converts a monetary amount between currencies using fixed exchange rates
+
+  Tool 2: convert_units
+    Name:    convert_units
+    Input:   value (float), from_unit (str), to_unit (str)
+    Output:  {success: bool, value: float, from: str, to: str, result: float}
+    Purpose: Converts between length (km/miles/meters/feet), weight (kg/lbs/grams),
+             and temperature (celsius/fahrenheit/kelvin)
+
+  ReAct Agent: SimpleReActAgent
+    Pattern: Thought -> Action -> Observation -> Finish
+    Returns: {success, tools_used, results, final_text, trace}
+  """)
+  
+  import re
+  import json
+  from typing import List, Callable
+
+  # ── Tool definitions ──────────────────────────────────────────────────────────
+
+  def convert_currency(amount: float, from_currency: str, to_currency: str) -> dict:
+      """
+      Tool: convert_currency
+      Input schema: amount (float), from_currency (str, 3-letter code e.g. USD), to_currency (str, 3-letter code e.g. EUR)
+      Purpose: Converts a monetary amount between currencies using fixed exchange rates.
+      Output schema: {success: bool, amount: float, from: str, to: str, converted: float, rate: float}
+      """
+      rates_to_usd = {
+          "USD": 1.0, "EUR": 1.08, "GBP": 1.27, "JPY": 0.0067,
+          "CHF": 1.13, "CAD": 0.74, "AUD": 0.65, "INR": 0.012
+      }
+      if not isinstance(amount, (int, float)) or amount < 0:
+          return {"success": False, "error": "amount must be a positive number"}
+      from_currency = from_currency.upper().strip()
+      to_currency = to_currency.upper().strip()
+      if len(from_currency) != 3:
+          return {"success": False, "error": f"Invalid currency code: {from_currency}"}
+      if len(to_currency) != 3:
+          return {"success": False, "error": f"Invalid currency code: {to_currency}"}
+      if from_currency not in rates_to_usd:
+          return {"success": False, "error": f"Currency {from_currency} not supported"}
+      if to_currency not in rates_to_usd:
+          return {"success": False, "error": f"Currency {to_currency} not supported"}
+      amount_in_usd = amount * rates_to_usd[from_currency]
+      converted = round(amount_in_usd / rates_to_usd[to_currency], 2)
+      rate = round(rates_to_usd[from_currency] / rates_to_usd[to_currency], 4)
+      return {"success": True, "amount": amount, "from": from_currency, "to": to_currency, "converted": converted, "rate": rate}
+
+
+  def convert_units(value: float, from_unit: str, to_unit: str) -> dict:
+      """
+      Tool: convert_units
+      Input schema: value (float), from_unit (str), to_unit (str)
+      Purpose: Converts between length (km, miles, meters, feet), weight (kg, lbs, grams) and temperature (celsius, fahrenheit, kelvin).
+      Output schema: {success: bool, value: float, from: str, to: str, result: float}
+      """
+      aliases = {
+          "kilometer": "km", "kilometers": "km", "kilometre": "km", "kilometres": "km",
+          "mile": "miles", "meter": "meters", "metre": "meters", "metres": "meters", "m": "meters",
+          "foot": "feet", "kilogram": "kg", "kilograms": "kg",
+          "pound": "lbs", "pounds": "lbs", "gram": "grams",
+          "c": "celsius", "f": "fahrenheit", "k": "kelvin"
+      }
+      from_unit = aliases.get(from_unit.lower().strip("."), from_unit.lower().strip("."))
+      to_unit   = aliases.get(to_unit.lower().strip("."), to_unit.lower().strip("."))
+
+      length_to_meters = {"meters": 1, "km": 1000, "miles": 1609.34, "feet": 0.3048}
+      weight_to_grams  = {"grams": 1, "kg": 1000, "lbs": 453.592}
+
+      if from_unit in length_to_meters and to_unit in length_to_meters:
+          result = round(value * length_to_meters[from_unit] / length_to_meters[to_unit], 4)
+          return {"success": True, "value": value, "from": from_unit, "to": to_unit, "result": result}
+
+      if from_unit in weight_to_grams and to_unit in weight_to_grams:
+          result = round(value * weight_to_grams[from_unit] / weight_to_grams[to_unit], 4)
+          return {"success": True, "value": value, "from": from_unit, "to": to_unit, "result": result}
+
+      temp_conversions = {
+          ("celsius", "fahrenheit"): lambda v: round(v * 9/5 + 32, 2),
+          ("fahrenheit", "celsius"): lambda v: round((v - 32) * 5/9, 2),
+          ("celsius", "kelvin"):     lambda v: round(v + 273.15, 2),
+          ("kelvin", "celsius"):     lambda v: round(v - 273.15, 2),
+          ("fahrenheit", "kelvin"):  lambda v: round((v - 32) * 5/9 + 273.15, 2),
+          ("kelvin", "fahrenheit"):  lambda v: round((v - 273.15) * 9/5 + 32, 2),
+      }
+      fn = temp_conversions.get((from_unit, to_unit))
+      if fn:
+          return {"success": True, "value": value, "from": from_unit, "to": to_unit, "result": fn(value)}
+
+      return {"success": False, "error": f"Conversion from {from_unit} to {to_unit} is not supported"}
+
+
+  # ── ReAct-style deterministic agent ───────────────────────────────────────────
+
+  class SimpleReActAgent:
+      """
+      ReAct-style agent (Reason + Act) using a deterministic regex router.
+      Each step produces a Thought -> Action -> Observation trace.
+      Returns a structured dict: {success, tools_used, results, final_text, trace}
+      """
+      def __init__(self, tools: List[Callable]):
+          self.tools = {fn.__name__: fn for fn in tools}
+          self.tool_names = list(self.tools.keys())
+
+      def _parse_float(self, s: str) -> float:
+          return float(s.replace(",", ""))
+
+      def run(self, query: str) -> dict:
+          scratchpad = []
+          tools_used = []
+          results = []
+          answers = []
+
+          currency_pattern = re.search(
+              r"(\d[\d,]*(?:\.\d+)?)\s*([A-Za-z]{3})\s*(?:to|in)\s*([A-Za-z]{3})"
+              r"|([A-Za-z]{3})\s+(\d[\d,]*(?:\.\d+)?)\s*(?:to|in)\s*([A-Za-z]{3})",
+              query, re.IGNORECASE
+          )
+          unit_re = r"(\d[\d,]*(?:\.\d+)?)\s*(km|miles|meters|feet|kg|lbs|pounds|grams|celsius|fahrenheit|kelvin)\s*(?:to|in)\s*(km|miles|meters|feet|kg|lbs|pounds|grams|celsius|fahrenheit|kelvin)"
+          unit_pattern = re.search(unit_re, query, re.IGNORECASE)
+
+          if currency_pattern:
+              g = currency_pattern.groups()
+              if g[0]:
+                  amount, from_c, to_c = self._parse_float(g[0]), g[1].upper(), g[2].upper()
+              else:
+                  from_c, amount, to_c = g[3].upper(), self._parse_float(g[4]), g[5].upper()
+
+              thought = f"Query contains currency codes {from_c} and {to_c} with amount {amount}. Calling convert_currency."
+              action_dict = {"name": "convert_currency", "input": {"amount": amount, "from_currency": from_c, "to_currency": to_c}}
+              result = self.tools["convert_currency"](amount, from_c, to_c)
+              observation = f"{result['amount']} {result['from']} = {result['converted']} {result['to']} (rate: {result['rate']})" if result["success"] else result["error"]
+
+              scratchpad.append(f"Thought: {thought}\nAction:\n```\n{json.dumps(action_dict, indent=2)}\n```\nObservation: {observation}")
+              tools_used.append("convert_currency")
+              results.append(result)
+              answers.append(observation)
+
+          if unit_pattern:
+              value     = self._parse_float(unit_pattern.group(1))
+              from_unit = unit_pattern.group(2).lower()
+              to_unit   = unit_pattern.group(3).lower()
+
+              thought = f"Query contains units {from_unit} and {to_unit} with value {value}. Calling convert_units."
+              action_dict = {"name": "convert_units", "input": {"value": value, "from_unit": from_unit, "to_unit": to_unit}}
+              result = self.tools["convert_units"](value, from_unit, to_unit)
+              observation = f"{result['value']} {result['from']} = {result['result']} {result['to']}" if result["success"] else result["error"]
+
+              scratchpad.append(f"Thought: {thought}\nAction:\n```\n{json.dumps(action_dict, indent=2)}\n```\nObservation: {observation}")
+              tools_used.append("convert_units")
+              results.append(result)
+              answers.append(observation)
+
+          if not answers:
+              final_text = "Could not determine which tool to use. Please include values and units or currency codes."
+              success = False
+          else:
+              final_text = " | ".join(answers)
+              success = True
+
+          finish_action = json.dumps({"name": "finish", "input": {"answer": final_text}}, indent=2)
+          scratchpad.append(f"Thought: I have all results needed to answer.\nAction:\n```\n{finish_action}\n```\nObservation: {final_text}")
+
+          print("\n--- AGENT TRACE ---")
+          for i, step in enumerate(scratchpad):
+              print(f"\x1b[31m >>> STEP {i+1} <<< \x1b[0m\n{step}\n")
+
+          return {"success": success, "tools_used": tools_used, "results": results, "final_text": final_text, "trace": scratchpad}
+
+
+  # ── Instantiate ───────────────────────────────────────────────────────────────
+
+  agent = SimpleReActAgent([convert_currency, convert_units])
+  print("Agent ready. Tools:", agent.tool_names)
+
+
+  # ── Test 1: Currency conversion ───────────────────────────────────────────────
+
+  print("\n" + "=" * 60)
+  print("TEST 1: Currency Conversion — 500 USD to EUR")
+  print("=" * 60)
+  r1 = agent.run("Convert 500 USD to EUR")
+  assert r1["success"] is True
+  assert "convert_currency" in r1["tools_used"]
+  assert r1["results"][0]["from"] == "USD"
+  assert r1["results"][0]["to"] == "EUR"
+  assert isinstance(r1["results"][0]["converted"], float)
+  print("FINAL ANSWER:", r1["final_text"])
+  print("TEST 1 PASSED")
+
+
+  # ── Test 2: Unit conversion — distance ───────────────────────────────────────
+
+  print("\n" + "=" * 60)
+  print("TEST 2: Unit Conversion — 100 miles to km")
+  print("=" * 60)
+  r2 = agent.run("Convert 100 miles to km")
+  assert r2["success"] is True
+  assert "convert_units" in r2["tools_used"]
+  assert r2["results"][0]["from"] == "miles"
+  assert r2["results"][0]["to"] == "km"
+  assert abs(r2["results"][0]["result"] - 160.934) < 0.1
+  print("FINAL ANSWER:", r2["final_text"])
+  print("TEST 2 PASSED")
+
+
+  # ── Test 3: Unit conversion — weight ─────────────────────────────────────────
+
+  print("\n" + "=" * 60)
+  print("TEST 3: Unit Conversion — 200 lbs to kg")
+  print("=" * 60)
+  r3 = agent.run("Convert 200 lbs to kg")
+  assert r3["success"] is True
+  assert abs(r3["results"][0]["result"] - 90.718) < 0.1
+  print("FINAL ANSWER:", r3["final_text"])
+  print("TEST 3 PASSED")
+
+
+  # ── Test 4: Unit conversion — temperature ────────────────────────────────────
+
+  print("\n" + "=" * 60)
+  print("TEST 4: Unit Conversion — 100 celsius to fahrenheit")
+  print("=" * 60)
+  r4 = agent.run("Convert 100 celsius to fahrenheit")
+  assert r4["success"] is True
+  assert r4["results"][0]["result"] == 212.0
+  print("FINAL ANSWER:", r4["final_text"])
+  print("TEST 4 PASSED")
+
+
+  # ── Test 5: Error case ────────────────────────────────────────────────────────
+
+  print("\n" + "=" * 60)
+  print("TEST 5: Error case — unsupported currency XYZ")
+  print("=" * 60)
+  r5 = convert_currency(100, "USD", "XYZ")
+  assert r5["success"] is False
+  assert "error" in r5
+  print("Error result:", r5)
+  print("TEST 5 PASSED")
+
+  print("\nAll tests passed.")
