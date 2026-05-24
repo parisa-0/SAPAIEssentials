@@ -948,3 +948,196 @@ You've completed an advanced tutorial on the Model Context Protocol. You now und
 **Questions?** Join our [*Teams channel*](https://teams.microsoft.com/l/channel/19%3AKZsG47NTYJN60sptRZuDdxXKUMVqACHP9oUGDG_sGTo1%40thread.tacv2/Questions%20and%20Answers?groupId=d9db4a55-e955-451f-8970-d36645e0bad6&tenantId=42f7676c-f455-423c-82f6-dc2d99791af7) to ask any questions you may have.
 
 %md
+
+      # ============================================================================
+  # Use Case Description:
+  # An entertainment agent combining TV Maze (show details) and Quotable API                                                                    
+  # (famous quotes). Ask about any TV show and the agent returns cast/plot info
+  # paired with a thematic quote matching the show's mood.
+  # ============================================================================
+
+  import os, json, logging, tempfile, sys, asyncio
+  from langchain_core.messages import HumanMessage, ToolMessage
+  from langchain_mcp_adapters.client import MultiServerMCPClient
+  from gen_ai_hub.proxy.langchain.init_models import init_llm
+
+  logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+  secret = dbutils.secrets.get(scope="PROD_XGTP_SCOPE", key="LEARNING_GENAIXL")
+  svcKey = json.loads(secret)
+  os.environ["AICORE_AUTH_URL"]       = svcKey["url"]
+  os.environ["AICORE_CLIENT_ID"]      = svcKey["clientid"]
+  os.environ["AICORE_CLIENT_SECRET"]  = svcKey["clientsecret"]
+  os.environ["AICORE_RESOURCE_GROUP"] = "default"
+  os.environ["AICORE_BASE_URL"]       = svcKey["serviceurls"]["AI_API_URL"]
+  print("✅  SAP AI Core configured")
+
+
+  def create_tvmaze_server_script():
+      script = "\n".join([
+          "import asyncio, os, re, logging, httpx",
+          "from fastmcp import FastMCP",
+          "",
+          "logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(os.sys.stderr)])",
+          "mcp = FastMCP('TVMazeServer')",
+          "",
+          "@mcp.tool()",
+          "async def get_tv_show(show_name: str) -> dict:",
+          '    """Fetches TV show details from TV Maze: summary, genres, status, and cast.',
+          "    Use this for any question about a TV show, its plot, cast, or status.",
+          "    Args:",
+          "        show_name: Name of the TV show e.g. Friends, The Office, Seinfeld",
+          "    Returns:",
+          "        Dict with name, genres, status, premiered, rating, cast, summary.",
+          '    """',
+          "    try:",
+          "        async with httpx.AsyncClient(timeout=15) as client:",
+          "            resp = await client.get(",
+          "                'https://api.tvmaze.com/singlesearch/shows',",
+          "                params={'q': show_name, 'embed': 'cast'}",
+          "            )",
+          "            resp.raise_for_status()",
+          "            data = resp.json()",
+          "        summary = re.sub(r'<[^>]+>', '', data.get('summary') or 'No summary available.')",
+          "        cast_list = data.get('_embedded', {}).get('cast', [])[:5]",
+          "        cast = ', '.join(",
+          "            f\"{c['person']['name']} as {c['character']['name']}\"",
+          "            for c in cast_list if c.get('person') and c.get('character')",
+          "        ) or 'Cast not available'",
+          "        return {",
+          "            'name': data.get('name', 'Unknown'),",
+          "            'genres': ', '.join(data.get('genres', [])) or 'Unknown',",
+          "            'status': data.get('status', 'Unknown'),",
+          "            'premiered': data.get('premiered', 'Unknown'),",
+          "            'rating': data.get('rating', {}).get('average', 'N/A'),",
+          "            'cast': cast,",
+          "            'summary': summary[:600]",
+          "        }",
+          "    except Exception as e:",
+          "        return {'error': f'TV Maze lookup failed: {str(e)}'}",
+          "",
+          "if __name__ == '__main__':",
+          "    asyncio.run(mcp.run(transport='stdio'))",
+      ])
+      path = os.path.join(tempfile.gettempdir(), "tvmaze_server.py")
+      with open(path, "w") as f:
+          f.write(script)
+      return path
+
+
+  def create_quotes_server_script():
+      script = "\n".join([
+          "import asyncio, os, logging, httpx",
+          "from fastmcp import FastMCP",
+          "",
+          "logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(os.sys.stderr)])",
+          "mcp = FastMCP('QuotesServer')",
+          "",
+          "@mcp.tool()",
+          "async def get_quote(tag: str = 'friendship') -> dict:",
+          '    """Fetches a famous quote filtered by topic from the Quotable API.',
+          "    Use this to find a thematic quote matching the mood of a TV show.",
+          "    Good tags: friendship, humor, life, love, wisdom, happiness, family.",
+          "    Args:",
+          "        tag: Topic keyword to filter quotes, default is friendship",
+          "    Returns:",
+          "        Dict with quote content and author name.",
+          '    """',
+          "    urls = [",
+          "        ('https://api.quotable.io/random', {'tags': tag}),",
+          "        ('https://api.quotable.io/random', {}),",
+          "    ]",
+          "    for url, params in urls:",
+          "        for verify in [True, False]:",
+          "            try:",
+          "                async with httpx.AsyncClient(timeout=10, verify=verify) as client:",
+          "                    resp = await client.get(url, params=params)",
+          "                    resp.raise_for_status()",
+          "                    data = resp.json()",
+          "                    if isinstance(data, list):",
+          "                        data = data[0] if data else {}",
+          "                    if data.get('content'):",
+          "                        logging.info(f'Quote fetched successfully (verify={verify})')",
+          "                        return {",
+          "                            'quote': data.get('content', 'No quote found.'),",
+          "                            'author': data.get('author', 'Unknown')",
+          "                        }",
+          "            except Exception as e:",
+          "                logging.warning(f'Quote attempt failed (url={url}, verify={verify}): {e}')",
+          "                continue",
+          "    return {'quote': 'Every day is a new beginning.', 'author': 'Unknown'}",
+          "",
+          "if __name__ == '__main__':",
+          "    asyncio.run(mcp.run(transport='stdio'))",
+      ])
+      path = os.path.join(tempfile.gettempdir(), "quotes_server.py")
+      with open(path, "w") as f:
+          f.write(script)
+      return path
+
+
+  tvmaze_path = create_tvmaze_server_script()
+  quotes_path = create_quotes_server_script()
+  print(f"✅  TV Maze server written to: {tvmaze_path}")
+  print(f"✅  Quotes server written to:  {quotes_path}")
+
+
+  async def main():
+      client = MultiServerMCPClient({
+          "tvmaze": {
+              "transport": "stdio",
+              "command": sys.executable,
+              "args": ["-u", tvmaze_path]
+          },
+          "quotes": {
+              "transport": "stdio",
+              "command": sys.executable,
+              "args": ["-u", quotes_path]
+          }
+      })
+
+      tools = await client.get_tools()
+      print(f"\n✅  Connected via MultiServerMCPClient — {len(tools)} tools discovered:")
+      for t in tools:
+          print(f"   • {t.name}: {t.description[:80]}...")
+
+      tool_map = {t.name: t for t in tools}
+      llm = init_llm("gpt-4o-mini", temperature=0.0, max_tokens=1024)
+      llm_with_tools = llm.bind_tools(tools)
+
+      async def run_agent(question: str) -> str:
+          messages = [HumanMessage(content=question)]
+          response = await llm_with_tools.ainvoke(messages)
+          if response.tool_calls:
+              messages.append(response)
+              for tool_call in response.tool_calls:
+                  print(f"   → Calling tool: {tool_call['name']} with args: {tool_call['args']}")
+                  result = await tool_map[tool_call["name"]].ainvoke(tool_call["args"])
+                  print(f"   → Tool result: {str(result)[:200]}")
+                  messages.append(ToolMessage(content=str(result), tool_call_id=tool_call["id"]))
+              final = await llm_with_tools.ainvoke(messages)
+              return final.content
+          return response.content
+
+      # Test 1a: TV Maze individually
+      print("\n--- Test 1a: TV Maze (Friends) ---")
+      result = await tool_map["get_tv_show"].ainvoke({"show_name": "Friends"})
+      print(result)
+
+      # Test 1b: Quotable individually
+      print("\n--- Test 1b: Quotable API (friendship quote) ---")
+      result = await tool_map["get_quote"].ainvoke({"tag": "friendship"})
+      print(result)
+
+      # Test 2: Single-tool agent query
+      print("\n--- Test 2: Single Tool (TV Maze — Seinfeld) ---")
+      print(await run_agent("Tell me about Seinfeld — what genres does it cover and is it still airing?"))
+
+      # Test 3: Combined query — both tools
+      print("\n--- Test 3: Combined Query (TV Maze + Quotable) ---")
+      print(await run_agent(
+          "Tell me about the TV show Friends — its plot, cast, and how long it ran. "
+          "Then find a famous quote about friendship that captures the spirit of the show."
+      ))
+
+  await main()
